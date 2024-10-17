@@ -109,10 +109,10 @@ def read_spectrum(objects, dirpath, download_files = False):
         loc = EarthLocation.of_site('lasilla')
         objects['helio_corr'][i] = sc.radial_velocity_correction(kind='heliocentric', obstime=t, location=loc).to(u.km/u.s).value
         # pull the spectrum elements
-        snr = 20
         wl = air2vac(table['Table'].data)
-        #wl = table['Table'].data
         fl = table[':'].data
+        mask = (5260 < wl) * (wl < 5280) # continuum region
+        snr = np.nanmean(fl[mask]) / np.nanstd(fl[mask])
         ivar =  snr**2 / (table[':'].data + 1e-6)**2
         spec_table[file] = (wl, fl, ivar)
     return spec_table, objects

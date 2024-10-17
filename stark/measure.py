@@ -103,20 +103,20 @@ def write_dict_to_json(dictionary, filename):
 def analyze_spectra(spec_dict, outfile, lines = ['a','b'], from_cache=False):
     if from_cache:
         with open(outfile) as json_file:
-            cache = json.load(json_file)
-    results = {}
+            results = json.load(json_file)
+    else:
+        results = {}
     for key in spec_dict.keys():
-        if from_cache and (key not in list(cache.keys())):
-            print(key)
-            wl, fl, ivar = spec_dict[key]
+        if from_cache and (key in list(results.keys())):
+            continue
+        print(key)
+        wl, fl, ivar = spec_dict[key]
+        try:
             parameters, windows = test_windows(wl, fl, ivar, lines = lines)
-            results[key] = process_results(parameters, windows, plot=False)
-            write_dict_to_json(results, outfile)
-        elif not from_cache:
-            print(key)
-            wl, fl, ivar = spec_dict[key]
-            parameters, windows = test_windows(wl, fl, ivar, lines = lines)
-            results[key] = process_results(parameters, windows, plot=False)
-            write_dict_to_json(results, outfile)
+        except:
+            print('Fit failed!')
+            pass
+        results[key] = process_results(parameters, windows, plot=False)
+        write_dict_to_json(results, outfile)
     return results
 
