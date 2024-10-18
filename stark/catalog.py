@@ -15,6 +15,53 @@ import urllib.request
 import os
 import re
 
+# Functions for processing the SPY data
+# -------
+
+def fetch_objfile():
+    objects = Table.read('http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/fits.gz?J/A+A/638/A131/objects.dat')
+    objects['FileName'] = [re.sub(r'dat', 'dat.gz', s).replace(' ', '') for s in objects['FileName']]
+    objects['Name'] = [s.replace(' ', '') for s in objects['Name']]
+    objects['ra'] = np.ones(len(objects)) * np.nan
+    objects['de'] = np.ones(len(objects)) * np.nan
+    objects['decimal_date'] = np.ones(len(objects)) * np.nan
+    objects['helio_corr'] = np.ones(len(objects)) * np.nan
+    return objects
+
+def read_spectrum(objects, dirpath, download_files = False):
+    dirpath = os.path.abspath(dirpath)
+    info_table, spec_table = {}, {}
+
+    for i, file in enumerate(tqdm(objects['FileName'])):
+        # find, download, or skip the file
+        path = os.path.join(dirpath, file)
+        if not os.path.isfile(path):
+            print(f'Err!! Cannot find file {file}')
+            continue
+        # read data
+        table = ascii.read(path)
+        table_meta = table.meta['comments']
+        find_index = lambda string : list(filter(lambda x: string in x, table_meta))
+        objects['ra'][i] = float(re.findall(r'\d+\.\d+', find_index('rekta')[0])[0])
+        objects['de'][i] = float(re.findall(r'\d+\.\d+', find_index('dekli')[0])[0])
+        objects['decimal_date'][i] = float(re.findall(r'\d+\.\d+', find_index('norm_date')[0])[0])
+        # calculate heliocentric correction
+        t = Time(objects['decimal_date'][i], format='decimalyear')
+        sc = SkyCoord(objects['ra'][i]*u.deg, objects['de'][i]*u.deg)
+        loc = EarthLocation.of_site('lasilla')
+        objects['helio_corr'][i] = sc.radial_velocity_correction(kind='heliocentric', obstime=t, location=loc).to(u.km/u.s).value
+        # pull the spectrum elements
+        wl = air2vac(table['Table'].data)
+        fl = table[':'].data
+        mask = (5260 < wl) * (wl < 5280) # continuum region
+        snr = np.nanmean(fl[mask]) / np.nanstd(fl[mask])
+        ivar =  snr**2 / (table[':'].data + 1e-6)**2
+        spec_table[file] = (wl, fl, ivar)
+    return spec_table, obj
+
+# Handle the analyzed data
+# --------
+
 def tabularize(data):
     # Create a DataFrame directly from the JSON
     df = pd.DataFrame([
@@ -63,57 +110,3 @@ def apply_mask(data, rows = ''):
     for row in rows:
         data[row] = fill_masked_with_nan(data, row)
     return data
-
-def bin_temperatures(data, edges):
-    temp_bn_to_range = lambda n: (edges[n-1], edges[n]) if (n != len(edges) and (n != 0)) else ((edges[n-1], np.infty) if n == len(edges) else (-np.infty, edges[n]))
-    temp_bn_to_center = lambda n: np.mean(temp_bn_to_range(n))
-
-    data['teff_bin'] = np.digitize(data['reference_teff'], edges)
-    return data, temp_bn_to_range, temp_bn_to_center
-
-def air2vac(wv):
-    _tl=1.e4/np.array(wv)
-    return (np.array(wv)*(1.+6.4328e-5+2.94981e-2/\
-                          (146.-_tl**2)+2.5540e-4/(41.-_tl**2)))
-
-def fetch_objfile():
-    objects = Table.read('http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/fits.gz?J/A+A/638/A131/objects.dat')
-    objects['FileName'] = [re.sub(r'dat', 'dat.gz', s).replace(' ', '') for s in objects['FileName']]
-    objects['Name'] = [s.replace(' ', '') for s in objects['Name']]
-    objects['ra'] = np.ones(len(objects)) * np.nan
-    objects['de'] = np.ones(len(objects)) * np.nan
-    objects['decimal_date'] = np.ones(len(objects)) * np.nan
-    objects['helio_corr'] = np.ones(len(objects)) * np.nan
-    return objects
-
-def read_spectrum(objects, dirpath, download_files = False):
-    dirpath = os.path.abspath(dirpath)
-    info_table, spec_table = {}, {}
-
-    for i, file in enumerate(tqdm(objects['FileName'])):
-        # find, download, or skip the file
-        path = os.path.join(dirpath, file)
-        if not os.path.isfile(path):
-            print(f'Err!! Cannot find file {file}')
-            continue
-        # read data
-        table = ascii.read(path)
-        table_meta = table.meta['comments']
-        find_index = lambda string : list(filter(lambda x: string in x, table_meta))
-        objects['ra'][i] = float(re.findall(r'\d+\.\d+', find_index('rekta')[0])[0])
-        objects['de'][i] = float(re.findall(r'\d+\.\d+', find_index('dekli')[0])[0])
-        objects['decimal_date'][i] = float(re.findall(r'\d+\.\d+', find_index('norm_date')[0])[0])
-        # calculate heliocentric correction
-        t = Time(objects['decimal_date'][i], format='decimalyear')
-        sc = SkyCoord(objects['ra'][i]*u.deg, objects['de'][i]*u.deg)
-        loc = EarthLocation.of_site('lasilla')
-        objects['helio_corr'][i] = sc.radial_velocity_correction(kind='heliocentric', obstime=t, location=loc).to(u.km/u.s).value
-        # pull the spectrum elements
-        wl = air2vac(table['Table'].data)
-        fl = table[':'].data
-        mask = (5260 < wl) * (wl < 5280) # continuum region
-        snr = np.nanmean(fl[mask]) / np.nanstd(fl[mask])
-        ivar =  snr**2 / (table[':'].data + 1e-6)**2
-        spec_table[file] = (wl, fl, ivar)
-    return spec_table, objects
-

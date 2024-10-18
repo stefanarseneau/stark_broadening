@@ -30,7 +30,7 @@ def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], plot_rvs = False):
     window['d'] += 15
 
     steps = np.linspace(0, 70, n)
-    for step in tqdm(steps):
+    for step in steps:
         temp_window = window.copy()
         temp_window['a'] += step
         temp_window['b'] += step
