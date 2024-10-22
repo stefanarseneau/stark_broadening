@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def bin_temperatures(data, edges):
     temp_bn_to_range = lambda n: (edges[n-1], edges[n]) if (n != len(edges) and (n != 0)) else ((edges[n-1], np.infty) if n == len(edges) else (-np.infty, edges[n]))

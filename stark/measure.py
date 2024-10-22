@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 
 def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], resolution = 0.0637, mask = True, plot_rvs = False):
     centres =  dict(a = 6564.61, b = 4862.68, g = 4341.68, d = 4102.89)
-    window = dict(a = 15, b = 15, g = 15, d = 15)
+    window = dict(a = 8, b = 8, g = 8, d = 8)
     edges = dict(a = 0, b = 0, g = 0, d = 0)
     rv_data = []
     windows = []
 
-    corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = resolution, windows=window, edges=edges)
+    #corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = resolution, windows=window, edges=edges)
+    corvmodel = corv.models.make_balmer_model(nvoigt=2, names = lines, resolution = resolution, windows=window, edges=edges)
     ref_rv, ref_e_rv, ref_redchi, ref_param_res = corv.fit.fit_corv(wl, fl, ivar, corvmodel.model)
     rv_data.append([ref_rv, ref_e_rv, ref_param_res.redchi, ref_param_res.params['teff'].value, ref_param_res.params['teff'].stderr,
                         ref_param_res.params['logg'].value, ref_param_res.params['logg'].stderr])
@@ -27,10 +28,10 @@ def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], resolution = 0.0637, 
     else:
         mask = np.zeros(len(wl), dtype=bool)
 
-    window['a'] += 15
-    window['b'] += 15
-    window['g'] += 15
-    window['d'] += 15
+    window['a'] += 22
+    window['b'] += 22
+    window['g'] += 22
+    window['d'] += 22
 
     steps = np.linspace(0, 70, n)
     for step in steps:
@@ -40,7 +41,8 @@ def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], resolution = 0.0637, 
         temp_window['g'] += step * 0.786 # to end at 85A after n steps
         temp_window['d'] += step * 0.643 # to end at 75A after n steps
         
-        corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = 0.0637, windows=temp_window, edges=edges)
+        #corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = resolution, windows=temp_window, edges=edges)
+        corvmodel = corv.models.make_balmer_model(nvoigt=2, names = lines, resolution = resolution, windows=temp_window, edges=edges)
         rv, e_rv, redchi, param_res = corv.fit.fit_corv(wl[~mask], fl[~mask], ivar[~mask], corvmodel.model)
         
         if plot_rvs:
