@@ -4,14 +4,14 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], plot_rvs = False):
+def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], resolution = 0.0637, mask = True, plot_rvs = False):
     centres =  dict(a = 6564.61, b = 4862.68, g = 4341.68, d = 4102.89)
     window = dict(a = 15, b = 15, g = 15, d = 15)
     edges = dict(a = 0, b = 0, g = 0, d = 0)
     rv_data = []
     windows = []
 
-    corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = 0.0637, windows=window, edges=edges)
+    corvmodel = corv.models.WarwickDAModel(model_name='1d_da_nlte', names = lines, resolution = resolution, windows=window, edges=edges)
     ref_rv, ref_e_rv, ref_redchi, ref_param_res = corv.fit.fit_corv(wl, fl, ivar, corvmodel.model)
     rv_data.append([ref_rv, ref_e_rv, ref_param_res.redchi, ref_param_res.params['teff'].value, ref_param_res.params['teff'].stderr,
                         ref_param_res.params['logg'].value, ref_param_res.params['logg'].stderr])
@@ -20,9 +20,12 @@ def test_windows(wl, fl, ivar, n = 10, lines = ['a', 'b'], plot_rvs = False):
     if plot_rvs:
         corv.utils.lineplot(wl, fl, ivar, corvmodel.model, ref_param_res.params)
 
-    mask_ha = ((centres['a'] - 3) < wl) * (wl < (centres['a'] + 3))
-    mask_hb = ((centres['b'] - 3) < wl) * (wl < (centres['b'] + 3))
-    mask = np.logical_or(mask_ha, mask_hb)
+    if mask:
+        mask_ha = ((centres['a'] - 3) < wl) * (wl < (centres['a'] + 3))
+        mask_hb = ((centres['b'] - 3) < wl) * (wl < (centres['b'] + 3))
+        mask = np.logical_or(mask_ha, mask_hb)
+    else:
+        mask = np.zeros(len(wl), dtype=bool)
 
     window['a'] += 15
     window['b'] += 15
