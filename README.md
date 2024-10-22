@@ -17,4 +17,9 @@ The data for this project are divided into two parts: `data/processed/spy/` and 
 * `--from_cache` should be used if you've already computed part of the dataset you're interested in and don't want to overwrite everything.
 
 Example usage:
+
+To fit the first four Balmer lines to the Arseneau+2024 sample while taking into account what has already been computed in the file `./data/processed/arseneau2024/Habgd_v2.json`, you would run the following command:
+
 `python scripts/fitlines.py sdss abgd ./data/processed/arseneau2024/Habgd_v2.json --from_cache`
+
+however since that file already contains data for all of those spectra, this will just terminate without actually computing anything.
